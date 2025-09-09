@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Password Analyzer</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 30px auto; }
+    input { font-size: 16px; padding: 8px; width: 100%; }
+    .bar { height: 14px; background: #eee; border-radius: 6px; overflow: hidden; margin: 8px 0; }
+    .fill { height: 100%; width: 0%; }
+  </style>
+</head>
+<body>
+  <h2>Password Analyzer</h2>
+  <input id="pw" placeholder="Type password here..." />
+  <div class="bar"><div id="fill" class="fill"></div></div>
+  <p id="score">Score: —</p>
+  <p id="entropy">Entropy: —</p>
+  <p id="issues">Issues: —</p>
+  <p id="suggestions">Suggestions: —</p>
+
+<script>
+function entropy(pw){
+  let pool = 0;
+  if (/[a-z]/.test(pw)) pool += 26;
+  if (/[A-Z]/.test(pw)) pool += 26;
+  if (/\d/.test(pw)) pool += 10;
+  if (/\W/.test(pw)) pool += 32;
+  if (pool === 0) return 0;
+  return Math.round(pw.length * Math.log2(pool));
+}
+
+const common = new Set(["123456","password","12345678","qwerty","abc123","111111"]);
+
+function score(pw){
+  let sc = 0, reasons = [];
+  if (pw.length >= 12) sc += 40;
+  else if (pw.length >= 8) sc += 25;
+  else if (pw.length >= 6) sc += 10;
+  else reasons.push("too short");
+
+  let classes = 0;
+  if (/[a-z]/.test(pw)) classes++;
+  if (/[A-Z]/.test(pw)) classes++;
+  if (/\d/.test(pw)) classes++;
+  if (/\W/.test(pw)) classes++;
+  sc += classes * 12;
+
+  if (common.has(pw.toLowerCase())) { sc = Math.max(0, sc - 50); reasons.push("common password"); }
+  if (/(.)\1\1/.test(pw)) { sc -= 10; reasons.push("repeating characters"); }
+
+  sc = Math.max(0, Math.min(100, sc));
+  return {score: sc, reasons};
+}
+
+document.getElementById('pw').addEventListener('input', (e)=>{
+  const pw = e.target.value;
+  const s = score(pw);
+  const ent = entropy(pw);
+
+  document.getElementById('score').innerText = 'Score: ' + s.score + '/100';
+  document.getElementById('entropy').innerText = 'Entropy: ' + ent + ' bits';
+  document.getElementById('issues').innerText = 'Issues: ' + (s.reasons.length ? s.reasons.join(', ') : 'None');
+
+  const sug = [];
+  if (pw.length < 12) sug.push('Use 12+ characters');
+  if (!/[A-Z]/.test(pw)) sug.push('Add uppercase');
+  if (!/[a-z]/.test(pw)) sug.push('Add lowercase');
+  if (!/\d/.test(pw)) sug.push('Add digits');
+  if (!/\W/.test(pw)) sug.push('Add symbols');
+  document.getElementById('suggestions').innerText = 'Suggestions: ' + (sug.length ? sug.join('; ') : 'Looks good!');
+
+  const fill = document.getElementById('fill');
+  fill.style.width = s.score + '%';
+  const g = Math.round(s.score * 2.55), r = 255 - g;
+  fill.style.background = 'rgb(' + r + ',' + g + ',80)';
+});
+</script>
+</body>
+</html>
